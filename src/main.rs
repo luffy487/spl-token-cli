@@ -1,10 +1,11 @@
-mod commands;
+mod commands; // Declare the commands module
+mod utils; // Declare the utils module
 
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "spl-token")]
-#[command(about = "CLI took to create, mint and transfer SPL tokens in Solana", long_about = None)]
+#[command(about = "CLI tool to create, mint, and transfer SPL tokens on Solana", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -12,14 +13,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Create {
-        #[arg(short, long)]
-        name: String,
-        #[arg(short, long)]
-        symbol: String,
-        #[arg(short, long)]
-        decimals: u64,
-    },
+    Create,
     Mint {
         #[arg(short, long)]
         token: String,
@@ -43,20 +37,16 @@ async fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Create {
-            name,
-            symbol,
-            decimals,
-        } => commands::create::create(name, symbol, decimals),
+        Commands::Create => commands::create::create().await,
         Commands::Mint {
             token,
             amount,
             recipient,
-        } => commands::mint::mint(token, amount, recipient),
+        } => commands::mint::mint(token, amount, recipient).await,
         Commands::Transfer {
             token,
             amount,
             recipient,
-        } => commands::transfer::transfer(token, amount, recipient),
+        } => commands::transfer::transfer_tokens(token, amount, recipient).await,
     }
 }
