@@ -1,14 +1,11 @@
-use std::str::FromStr;
-
 use crate::utils::read_keys_from_file;
 use solana_client::rpc_client::RpcClient;
-use solana_sdk::{
-    pubkey::Pubkey,
-    signature::Keypair,
-    signer::Signer,
-    transaction::Transaction,
+use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::Signer, transaction::Transaction};
+use spl_associated_token_account::{
+    get_associated_token_address, instruction::create_associated_token_account,
 };
 use spl_token::{instruction::mint_to, ID as SPL_TOKEN_PROGRAM_ID};
+use std::str::FromStr;
 pub async fn mint(token: String, amount: u64, recipient: String) {
     let payer_in_bytes =
         read_keys_from_file().expect("Failed to read the Key Pairs from the config file");
@@ -27,7 +24,6 @@ pub async fn mint(token: String, amount: u64, recipient: String) {
             return;
         }
     };
-
     let mint_to_pubkey = match Pubkey::from_str(&recipient) {
         Ok(mint_pubkey) => mint_pubkey,
         Err(err) => {
@@ -42,13 +38,22 @@ pub async fn mint(token: String, amount: u64, recipient: String) {
             return;
         }
     };
-
+    let mut instructions = vec![];
+    let mint_to_ata = get_associated_token_address(&mint_to_pubkey, &mint_pub_key);
+    if client.get_account(&mint_to_ata).is_err() {
+        instructions.push(create_associated_token_account(
+            &payer.pubkey(),
+            &mint_to_pubkey,
+            &mint_pub_key,
+            &SPL_TOKEN_PROGRAM_ID,
+        ));
+    }
     let mint_ixn = match mint_to(
         &SPL_TOKEN_PROGRAM_ID,
         &mint_pub_key,
-        &mint_to_pubkey,
+        &mint_to_ata,
         &payer.pubkey(),
-        &[&payer.pubkey(), &mint_pub_key],
+        &[&payer.pubkey()],
         amount,
     ) {
         Ok(ixn) => ixn,
@@ -57,7 +62,8 @@ pub async fn mint(token: String, amount: u64, recipient: String) {
             return;
         }
     };
-    let mut transaction = Transaction::new_with_payer(&[mint_ixn], Some(&payer.pubkey()));
+    instructions.push(mint_ixn);
+    let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
 
     transaction
         .try_sign(&[&payer], recent_blockhash)

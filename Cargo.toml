@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.4", features = ["derive"] } # Updated to the latest version
+spl-associated-token-account = "6.0.0" 
 solana-client = "2.1.7" # Latest version as of now
 solana-sdk = "2.1.7"    # Must match solana-client
 spl-token = "7.0.0"     # Updated to the latest version
